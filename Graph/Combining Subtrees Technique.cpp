@@ -39,13 +39,11 @@ Correct:
 sz[u] += sz[v];
 AFTER loops finish.
 
+dp[u][k] == Within the subtree of node u, how many ways can I build a connected component of exactly size k
+
+
+
 # 3. Standard Template (C++)
-
-#include <iostream>
-#include <vector>
-using namespace std;
-
-const int MOD = 1e9 + 7;
 
     void dfs(int u, int p) {
 
