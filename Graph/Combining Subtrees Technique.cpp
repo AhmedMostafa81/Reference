@@ -74,9 +74,7 @@ dp[u][k] == Within the subtree of node u, how many ways can I build a connected 
                     (new_dp[i] + dp[u][i]) % MOD;
 
                 // Merge child
-                for (int j = 1;
-                     j <= min(K - i, sz[v]);
-                     j++) {
+                for (int j = 1; j <= min(K - i, sz[v]); j++) {
 
                     if (!dp[v][j])
                         continue;
