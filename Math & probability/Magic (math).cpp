@@ -64,3 +64,24 @@ ll Pollard(ll n) {
  
     return d == n ? Pollard(n) : d;
 }
+
+// ===========================================
+// fast prime factorization
+factor(n):
+    if prime -> done
+    d = Pollard(n)
+    factor(d)
+    factor(n/d)
+/*
+For prime factorization with that recursive scheme, the usual answer is:
+
+Expected time ≈ O(n^(1/4))
+
+for a 64-bit number, with some log n factors from modular arithmetic and primality checks.
+
+So a more careful way to say it is:
+
+O(n^(1/4) * log n) or O(n ^ (1/4) * log(n)^2)
+
+depending on how mul_mod / pow_mod are implemented.
+ */
