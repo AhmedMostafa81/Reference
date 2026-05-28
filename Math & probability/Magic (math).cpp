@@ -7,6 +7,7 @@ is 4th_root(a1*a2*a3*a4)
 
 
 /* ----------- Miller-Rabin ----------- */
+// log or log^2
  
 bool isPrime(ll n) {
     if (n < 2) return false;
@@ -38,6 +39,8 @@ bool isPrime(ll n) {
 ------------------------------------------------------------------------------------------
 
 /* ----------- Pollard Rho ----------- */
+ // find any divisor 1 < d < n
+ // time -> n^(1/4)
  
 mt19937_64 rng(chrono::steady_clock::now().time_since_epoch().count());
  
