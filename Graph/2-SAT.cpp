@@ -9,7 +9,7 @@ struct _2_SAT {
     vector<int> order, comp;
     vector<bool> rt;
 
-    TwoSatSolver(int _n_vars) : m(_n_vars), n(2 * m), gr(n), gr_(n), vis(n), order(), comp(n, -1), rt(m) {
+    _2_SAT (int _n_vars) : m(_n_vars), n(2 * m), gr(n), gr_(n), vis(n), order(), comp(n, -1), rt(m) {
         order.reserve(n);
     }
     void dfs1(int v) {
@@ -66,7 +66,7 @@ struct _2_SAT {
     }
 
     static void example_usage() {
-        TwoSatSolver solver(3); // a, b, c
+        _2_SAT solver(3); // a, b, c
         solver.add_disjunction(0, false, 1, true);  //     a  v  not b
         solver.add_disjunction(0, true, 1, true);   // not a  v  not b
         solver.add_disjunction(1, false, 2, false); //     b  v      c
