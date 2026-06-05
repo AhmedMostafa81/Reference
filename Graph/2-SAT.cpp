@@ -2,20 +2,20 @@
 
 
 struct TwoSatSolver {
-    int n_vars;
-    int n_vertices;
-    vector<vector<int>> adj, adj_t;
-    vector<bool> used;
+    int m;
+    int n;
+    vector<vector<int>> gr, gr_;
+    vector<bool> vis;
     vector<int> order, comp;
-    vector<bool> assignment;
+    vector<bool> rt;
 
-    TwoSatSolver(int _n_vars) : n_vars(_n_vars), n_vertices(2 * n_vars), adj(n_vertices), adj_t(n_vertices), used(n_vertices), order(), comp(n_vertices, -1), assignment(n_vars) {
-        order.reserve(n_vertices);
+    TwoSatSolver(int _n_vars) : m(_n_vars), n(2 * m), gr(n), gr_(n), vis(n), order(), comp(n, -1), rt(m) {
+        order.reserve(n);
     }
     void dfs1(int v) {
-        used[v] = true;
-        for (int u : adj[v]) {
-            if (!used[u])
+        vis[v] = true;
+        for (int u : gr[v]) {
+            if (!vis[u])
                 dfs1(u);
         }
         order.push_back(v);
@@ -23,7 +23,7 @@ struct TwoSatSolver {
 
     void dfs2(int v, int cl) {
         comp[v] = cl;
-        for (int u : adj_t[v]) {
+        for (int u : gr_[v]) {
             if (comp[u] == -1)
                 dfs2(u, cl);
         }
@@ -31,38 +31,38 @@ struct TwoSatSolver {
 
     bool solve_2SAT() {
         order.clear();
-        used.assign(n_vertices, false);
-        for (int i = 0; i < n_vertices; ++i) {
-            if (!used[i])
+        vis.assign(n, false);
+        for (int i = 0; i < n; ++i) {
+            if (!vis[i])
                 dfs1(i);
         }
 
-        comp.assign(n_vertices, -1);
-        for (int i = 0, j = 0; i < n_vertices; ++i) {
-            int v = order[n_vertices - i - 1];
+        comp.assign(n, -1);
+        for (int i = 0, j = 0; i < n; ++i) {
+            int v = order[n - i - 1];
             if (comp[v] == -1)
                 dfs2(v, j++);
         }
 
-        assignment.assign(n_vars, false);
-        for (int i = 0; i < n_vertices; i += 2) {
+        rt.assign(m, false);
+        for (int i = 0; i < n; i += 2) {
             if (comp[i] == comp[i + 1])
                 return false;
-            assignment[i / 2] = comp[i] > comp[i + 1];
+            rt[i / 2] = comp[i] > comp[i + 1];
         }
         return true;
     }
 
     void add_disjunction(int a, bool na, int b, bool nb) {
-        // na and nb signify whether a and b are to be negated 
+        // na and nb signify whether a and b are to be negated
         a = 2 * a ^ na;
         b = 2 * b ^ nb;
         int neg_a = a ^ 1;
         int neg_b = b ^ 1;
-        adj[neg_a].push_back(b);
-        adj[neg_b].push_back(a);
-        adj_t[b].push_back(neg_a);
-        adj_t[a].push_back(neg_b);
+        gr[neg_a].push_back(b);
+        gr[neg_b].push_back(a);
+        gr_[b].push_back(neg_a);
+        gr_[a].push_back(neg_b);
     }
 
     static void example_usage() {
@@ -73,10 +73,9 @@ struct TwoSatSolver {
         solver.add_disjunction(0, false, 0, false); //     a  v      a
         assert(solver.solve_2SAT() == true);
         auto expected = vector<bool>(True, False, True);
-        assert(solver.assignment == expected);
+        assert(solver.rt == expected);
     }
 };
-
 
 // Bedoo
 
