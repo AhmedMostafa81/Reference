@@ -1,7 +1,7 @@
 // CP-Algo
 
 
-struct TwoSatSolver {
+struct _2_SAT {
     int m;
     int n;
     vector<vector<int>> gr, gr_;
