@@ -12,20 +12,20 @@ struct _2_SAT {
     _2_SAT (int _n_vars) : m(_n_vars), n(2 * m), gr(n), gr_(n), vis(n), order(), comp(n, -1), rt(m) {
         order.reserve(n);
     }
-    void dfs1(int v) {
-        vis[v] = true;
-        for (int u : gr[v]) {
-            if (!vis[u])
-                dfs1(u);
+    void dfs1(int node) {
+        vis[node] = true;
+        for (int ch : gr[node]) {
+            if (!vis[ch])
+                dfs1(ch);
         }
-        order.push_back(v);
+        order.push_back(node);
     }
 
-    void dfs2(int v, int cl) {
-        comp[v] = cl;
-        for (int u : gr_[v]) {
-            if (comp[u] == -1)
-                dfs2(u, cl);
+    void dfs2(int node, int cl) {
+        comp[node] = cl;
+        for (int ch : gr_[node]) {
+            if (comp[ch] == -1)
+                dfs2(ch, cl);
         }
     }
 
@@ -39,9 +39,9 @@ struct _2_SAT {
 
         comp.assign(n, -1);
         for (int i = 0, j = 0; i < n; ++i) {
-            int v = order[n - i - 1];
-            if (comp[v] == -1)
-                dfs2(v, j++);
+            int node = order[n - i - 1];
+            if (comp[node] == -1)
+                dfs2(node, j++);
         }
 
         rt.assign(m, false);
