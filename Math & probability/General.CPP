@@ -1,4 +1,9 @@
 /*
+quadratic equation
+a * x^2 + b * x + c = 0
+x = (-b (+or-) sqrtl(b * b - 4 * a * c) ) / (2 * a)
+
+
 to get sum 2^(0*n) + 2^(1*n) + 2^(2*n) + 2^(3*n) + 2^(4*n) + .... + 2^(k*n)
 
  the formula is
