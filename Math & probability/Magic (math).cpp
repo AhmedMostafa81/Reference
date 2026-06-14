@@ -6,7 +6,7 @@ is 4th_root(a1*a2*a3*a4)
 
 
 int mul_mod(int a,int b , int mod) {
-    return ((__int128)a * b) % mod;
+    return ((__int128)a * b) % mod; // int128 is important here
 }
 
 int pow_mod(int x , int pw , int mod) {
