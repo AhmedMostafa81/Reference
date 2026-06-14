@@ -5,6 +5,18 @@ is 4th_root(a1*a2*a3*a4)
 
 
 
+int mul_mod(int a,int b , int mod) {
+    return ((__int128)a * b) % mod;
+}
+
+int pow_mod(int x , int pw , int mod) {
+    if (pw == 0)
+        return 1;
+    int rt = pow_mod(mul_mod(x , x , mod) , pw >> 1 , mod);
+    if (pw & 1)
+        rt = mul_mod(rt , x , mod);
+    return rt;
+}
 
 /* ----------- Miller-Rabin ----------- */
 // log or log^2
