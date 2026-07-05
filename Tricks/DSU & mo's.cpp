@@ -1,5 +1,6 @@
 
-O(Q log Q + (M + Q) * sqrt(M) * log N)
+// O(Q log Q + (M + Q) * sqrt(M) * log N)
+// you can change this line "int sq = sqrt(m) + 2;" to change complexity
 
 #include <iostream>
 #include <vector>
