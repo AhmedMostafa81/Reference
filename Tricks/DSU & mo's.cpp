@@ -128,3 +128,87 @@ int main() {
     pewpew();
     return 0;
 }
+
+
+--------------------------------------------------------------
+
+ Check if this graph is bipartite
+
+vector<tuple<int, int, int, int>> mo;
+int U[N], V[N];
+int L, R;
+
+int parent_dsu[N], sz_dsu[N], color[N];
+int odd_cycles; // If this is > 0, the current graph is NOT bipartite
+
+struct Change {
+    int u, v;
+    int is_union;
+    int ruined_bipartite; // 1 if this specific edge created an odd cycle
+};
+vector<Change> history;
+
+void DSU_init(int n) {
+    odd_cycles = 0;
+    for (int i = 1; i <= n; i++) {
+        parent_dsu[i] = i;
+        sz_dsu[i] = 1;
+        color[i] = 0; // 0 means same color as parent
+    }
+    history.clear();
+}
+
+// Returns {root, color_parity_to_root}
+pair<int, int> find_set(int v) {
+    int c = 0;
+    while (v != parent_dsu[v]) {
+        c ^= color[v];
+        v = parent_dsu[v];
+    }
+    return {v, c};
+}
+
+void add(int idx) {
+    auto [a, cA] = find_set(U[idx]);
+    auto [b, cB] = find_set(V[idx]);
+
+    if (a == b) {
+        // They are already in the same component. 
+        // If they have the same parity to the root, adding this edge makes an odd cycle.
+        int ruined = (cA == cB);
+        odd_cycles += ruined;
+        history.push_back({-1, -1, 0, ruined});
+    } else {
+        // Different components. Union by size.
+        if (sz_dsu[a] < sz_dsu[b]) {
+            swap(a, b);
+            swap(cA, cB);
+        }
+        
+        parent_dsu[b] = a;
+        sz_dsu[a] += sz_dsu[b];
+        
+        // We want color[b] ^ cB ^ cA ^ 1 == 0 so that u and v end up with different colors
+        color[b] = cA ^ cB ^ 1;
+        
+        history.push_back({a, b, 1, 0});
+    }
+}
+
+void rem() {
+    if (history.empty()) return;
+    auto ch = history.back();
+    history.pop_back();
+    
+    if (ch.is_union) {
+        // Rollback the union
+        sz_dsu[ch.u] -= sz_dsu[ch.v];
+        parent_dsu[ch.v] = ch.v;
+        color[ch.v] = 0; // Reset color
+    } else {
+        // Rollback the odd cycle counter if this edge caused one
+        odd_cycles -= ch.ruined_bipartite;
+    }
+}
+========
+ans[idx] = (odd_cycles == 0); // 1 if Possible, 0 if Impossible
