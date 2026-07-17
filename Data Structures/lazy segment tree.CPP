@@ -78,114 +78,100 @@ struct lazy_segment_tree{
 
 
 // another version
-// range sum + range add + range multiply
 
+// USE CASE: Range Sum + Range Add + Range Multiply
+// MODIFICATION: To solve a different problem, ONLY edit Node, Tag, merge, compose, and apply_tag.
 
-struct lazy_segment_tree {
-    struct Node {
-        long long sum = 0;
-    };
+const int MAXN = 200005;
 
-    struct Tag {
-        long long mul = 1;
-        long long add = 0;
-    };
+#define lc (node << 1)
+#define rc ((node << 1) | 1)
+#define mid ((st + ed) >> 1)
 
-    int sz;
-    vector<Node> tree;
-    vector<Tag> lazy;
-
-    Node neutral;
-
-    void init(int n) {
-        sz = 1;
-        while (sz < n) sz <<= 1;
-        tree.assign(2 * sz, neutral);
-        lazy.assign(2 * sz, Tag());
-    }
-
-    Node merge(const Node& a, const Node& b) {
-        return Node{a.sum + b.sum};
-    }
-
-    // old first, then new
-    Tag compose(const Tag& old, const Tag& nw) {
-        return Tag{
-            old.mul * nw.mul,
-            old.add * nw.mul + nw.add
-        };
-    }
-
-    void apply(int node, int lx, int rx, const Tag& t) {
-        tree[node].sum = tree[node].sum * t.mul + t.add * (rx - lx);
-        lazy[node] = compose(lazy[node], t);
-    }
-
-    void push(int node, int lx, int rx) {
-        if (lazy[node].mul == 1 && lazy[node].add == 0) return;
-        if (rx - lx == 1) {
-            lazy[node] = Tag();
-            return;
-        }
-
-        int mid = (lx + rx) / 2;
-        apply(node * 2 + 1, lx, mid, lazy[node]);
-        apply(node * 2 + 2, mid, rx, lazy[node]);
-        lazy[node] = Tag();
-    }
-
-    void build(const vector<long long>& a, int node, int lx, int rx) {
-        if (rx - lx == 1) {
-            if (lx < (int)a.size()) tree[node].sum = a[lx];
-            return;
-        }
-
-        int mid = (lx + rx) / 2;
-        build(a, node * 2 + 1, lx, mid);
-        build(a, node * 2 + 2, mid, rx);
-        tree[node] = merge(tree[node * 2 + 1], tree[node * 2 + 2]);
-    }
-
-    void build(const vector<long long>& a) {
-        init((int)a.size());
-        build(a, 0, 0, sz);
-    }
-
-    void update(int l, int r, const Tag& t, int node, int lx, int rx) {
-        if (r <= lx || rx <= l) return;
-        if (l <= lx && rx <= r) {
-            apply(node, lx, rx, t);
-            return;
-        }
-
-        push(node, lx, rx);
-        int mid = (lx + rx) / 2;
-        update(l, r, t, node * 2 + 1, lx, mid);
-        update(l, r, t, node * 2 + 2, mid, rx);
-        tree[node] = merge(tree[node * 2 + 1], tree[node * 2 + 2]);
-    }
-
-    void add(int l, int r, long long x) {
-        update(l, r, Tag{1, x}, 0, 0, sz);
-    }
-
-    void mul2(int l, int r) {
-        update(l, r, Tag{2, 0}, 0, 0, sz);
-    }
-
-    Node query(int l, int r, int node, int lx, int rx) {
-        if (r <= lx || rx <= l) return neutral;
-        if (l <= lx && rx <= r) return tree[node];
-
-        push(node, lx, rx);
-        int mid = (lx + rx) / 2;
-        return merge(
-            query(l, r, node * 2 + 1, lx, mid),
-            query(l, r, node * 2 + 2, mid, rx)
-        );
-    }
-
-    long long sum(int l, int r) {
-        return query(l, r, 0, 0, sz).sum;
-    }
+struct Node {
+    long long sum = 0;
+    // Neutral node definition (0 for sum, INF for min)
+    Node() {} 
+    Node(long long _sum) : sum(_sum) {}
 };
+
+struct Tag {
+    long long mul = 1, add = 0;
+    // Neutral tag definition
+    Tag() {} 
+    Tag(long long _mul, long long _add) : mul(_mul), add(_add) {}
+    bool is_neutral() const { return mul == 1 && add == 0; }
+};
+
+Node tree[4 * MAXN];
+Tag lazy[4 * MAXN];
+
+// Combine two nodes
+Node merge(const Node& a, const Node& b) {
+    return Node(a.sum + b.sum);
+}
+
+// Combine an old lazy tag with a new lazy tag coming from above
+Tag compose(const Tag& old_tag, const Tag& new_tag) {
+    return Tag(old_tag.mul * new_tag.mul, old_tag.add * new_tag.mul + new_tag.add);
+}
+
+// Apply a tag to a node and update the node's answer
+void apply_tag(int node, int st, int ed, const Tag& t) {
+    long long len = ed - st + 1;
+    tree[node].sum = tree[node].sum * t.mul + t.add * len;
+    lazy[node] = compose(lazy[node], t);
+}
+
+void push(int node, int st, int ed) {
+    if (!lazy[node].is_neutral()) {
+        apply_tag(lc, st, mid, lazy[node]);
+        apply_tag(rc, mid + 1, ed, lazy[node]);
+        lazy[node] = Tag(); // Reset to neutral
+    }
+}
+
+void build(int node, int st, int ed, const vector<long long>& a) {
+    lazy[node] = Tag();
+    if (st == ed) {
+        tree[node] = Node(st < a.size() ? a[st] : 0);
+        return;
+    }
+    build(lc, st, mid, a);
+    build(rc, mid + 1, ed, a);
+    tree[node] = merge(tree[lc], tree[rc]);
+}
+
+void update(int node, int st, int ed, int l, int r, const Tag& t) {
+    if (l > ed || r < st) return;
+    if (l <= st && ed <= r) {
+        apply_tag(node, st, ed, t);
+        return;
+    }
+    push(node, st, ed);
+    update(lc, st, mid, l, r, t);
+    update(rc, mid + 1, ed, l, r, t);
+    tree[node] = merge(tree[lc], tree[rc]);
+}
+
+Node query(int node, int st, int ed, int l, int r) {
+    if (l > ed || r < st) return Node(); // Neutral node
+    if (l <= st && ed <= r) return tree[node];
+    
+    push(node, st, ed);
+    return merge(query(lc, st, mid, l, r), 
+                 query(rc, mid + 1, ed, l, r));
+}
+
+// Wrappers for clean usage in main()
+void range_add(int l, int r, long long x, int n) { update(1, 1, n, l, r, Tag(1, x)); }
+void range_mul(int l, int r, long long x, int n) { update(1, 1, n, l, r, Tag(x, 0)); }
+
+
+
+
+
+
+
+
+
