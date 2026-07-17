@@ -1,37 +1,11 @@
-//For any index i, find the nearest or farthest R such that the range [i, R] contains at most k distinct numbers, in O(log n) time.
+// USE CASE: Point updates, Range sums/frequencies.
+// TRICK: For any index i, find the nearest or farthest R such that the range [i, R] 
+// contains at most k distinct numbers, in O(log n) time.
+// (Usually done by mapping each value to its latest index, updating the tree at that index, 
+// and using the roots history to query sums).
 
 
-/*
-if you make it with pointers
-you can make this trick to make it (10× faster than `new`)
-
-const int MAXNODE = (40~50) * N;
-
-Node pool[MAXNODE];
-int ptr = 0;
-
-Node* newnode(unsigned long long val) {
-    Node* x = &pool[ptr++];
-    x->l = x->r = nullptr;
-    x->XOR = val;
-    return x;
-}
-
-Node* merge(Node* l, Node* r) {
-    Node* x = &pool[ptr++];
-    x->l = l;
-    x->r = r;
-    x->XOR = 0;
-    if (l) x->XOR ^= l->XOR;
-    if (r) x->XOR ^= r->XOR;
-    return x;
-}
-
-return new Node(0);   ->   return newnode(0);
-return new Node(l , r); -> return merge(l , r);
-*/
-
-
+// pointers
 
 
 const int N = ;
@@ -76,151 +50,138 @@ struct persistent_segment_tree {
 
     vector<Node*>v = {seg.build(0,n+5)};
 
+
+
+
+
+
 // without pointers     (faster)
 
-
 #define M ((st + ed) >> 1)
 
-const int MAXM = ;          // max compressed positions
-const int SZ = MAXM * 40 + 5;     // node pool size (2 * MAXM * log(MAXM)) (best practice is MAXM * (40~50))
+const int MAXN = 200005, MAXQ = 200005, LOG = 20;
+const int SZ = (MAXN * 4) + (MAXQ * LOG) + 5; 
 
 int ptr = 1;
-int L[SZ], R[SZ];
-long long sum[SZ]; // sum of each node in segment tree
-int A[MAXM + 5]; // array (input)
+int lc[SZ], rc[SZ];
+long long sum[SZ];
+int roots[MAXQ]; // Store roots for each version (or update query)
 
-
-//Persistent Segment Tree
-
-void init_segment_tree(){ // initialize segment tree
+void init_segment_tree() {
     ptr = 1;
-    L[0] = R[0] = 0;
-    sum[0] = 0;
+    lc[0] = rc[0] = sum[0] = 0; 
 }
 
-int leaf(int v){
+int build(int st, int ed) {
+    if (st == ed) return 0; // return leaf node if reading from array
     int p = ptr++;
-    L[p] = R[p] = 0;
-    sum[p] = v;
+    lc[p] = build(st, M);
+    rc[p] = build(M + 1, ed);
     return p;
 }
 
-int Merge(int a, int b){
+int update(int old, int st, int ed, int pos, int val) {
     int p = ptr++;
-    L[p] = a; R[p] = b;
-    sum[p] = sum[a] + sum[b];
+    lc[p] = lc[old]; rc[p] = rc[old]; 
+    sum[p] = sum[old] + val; 
+    
+    if (st == ed) return p;
+    
+    if (pos <= M) lc[p] = update(lc[old], st, M, pos, val);
+    else rc[p] = update(rc[old], M + 1, ed, pos, val);
+    
     return p;
 }
 
-int build(int st, int ed){
-    if (st == ed) return leaf(A[st]);
-    return Merge(build(st , M) , build(M + 1 , ed));
-}
-
-int update(int old, int st, int ed, int pos, int new_val){
-    if (st == ed)
-        return leaf(new_val);
-    if (pos <= M)
-        return Merge(update(L[old], st, M, pos, new_val),R[old]);
-    else
-        return Merge(L[old] , update(R[old], M + 1, ed, pos, new_val));
-}
-
-long long query(int L_node, int R_node, int st, int ed, int k){
+long long query(int L_node, int R_node, int st, int ed, int k) {
     if (st >= k) return sum[R_node] - sum[L_node];
     if (ed < k) return 0;
-    return query(L[L_node], L[R_node], st, M, k) + query(R[L_node], R[R_node], M + 1, ed, k);
+    
+    return query(lc[L_node], lc[R_node], st, M, k) + 
+           query(rc[L_node], rc[R_node], M + 1, ed, k);
 }
 
 
 
 
 
-//   bigger version
+// max subarray sum
+// USE CASE: Complex node merging (Max Subarray Sum, Longest Increasing Subsequence, etc.)
+// MODIFICATION: Just change 'Node' and 'merge' function. The tree functions stay exactly the same.
 
 #define M ((st + ed) >> 1)
 
-const int MAXM = 100002;
-const int SZ = MAXM * 40 + 5;
-
-// Persistent Segment Tree
+const int MAXN = 100005, MAXQ = 100005, LOG = 20;
+const int SZ = (MAXN * 4) + (MAXQ * LOG) + 5; 
 
 int ptr = 1;
-int L[SZ], R[SZ];
+int lc[SZ], rc[SZ];
+int roots[MAXQ];
 
 struct Node {
-    long long sum = 0;
-    int pref = 0 , suf = 0 , mx = 0  , len = 0 ; // neutral
+    long long sum, pref, suf, mx;
+    int len;
 
-    static Node leaf(int v){
-        Node t;
-        t.sum = v;
-        t.pref = max(0,v);
-        t.suf  = t.pref;
-        t.mx   = t.pref;
-        t.len  = 1;
-        return t;
+    Node(long long v = 0, int l = 0) { 
+        sum = v;
+        pref = suf = mx = max(0LL, v);
+        len = l;
     }
 
-    static Node merge(const Node &a,const Node &b){
-        if(!a.len) return b;
-        if(!b.len) return a;
+    friend Node merge(const Node &a, const Node &b) {
+        if (!a.len) return b;
+        if (!b.len) return a;
         Node c;
         c.len = a.len + b.len;
         c.sum = a.sum + b.sum;
-        c.pref = max((long long)a.pref , a.sum + b.pref);
-        c.suf  = max((long long)b.suf , b.sum + a.suf);
-        c.mx   = max({a.mx , b.mx , a.suf + b.pref});
+        c.pref = max(a.pref, a.sum + b.pref);
+        c.suf  = max(b.suf, b.sum + a.suf);
+        c.mx   = max({a.mx, b.mx, a.suf + b.pref});
         return c;
     }
-};
+} seg[SZ];
 
-Node Seg[SZ];
-
-void init_segment_tree(){
+void init_segment_tree() {
     ptr = 1;
-    L[0] = R[0] = 0;
-    Seg[0] = Node();   // neutral node
+    lc[0] = rc[0] = 0;
+    seg[0] = Node(); 
 }
 
-int new_leaf(int v){
+int build(int st, int ed) {
     int p = ptr++;
-    L[p] = R[p] = 0;
-    Seg[p] = Node::leaf(v);
+    if (st == ed) {
+        seg[p] = Node(-2e9, 1); 
+        return p;
+    }
+    lc[p] = build(st, M);
+    rc[p] = build(M + 1, ed);
+    seg[p] = merge(seg[lc[p]], seg[rc[p]]);
     return p;
 }
 
-int Merge(int a,int b){
+int update(int old, int st, int ed, int pos, int val) {
     int p = ptr++;
-    L[p] = a;
-    R[p] = b;
-    Seg[p] = Node::merge(Seg[a], Seg[b]);
+    if (st == ed) {
+        seg[p] = Node(val, 1);
+        return p;
+    }
+    
+    lc[p] = lc[old]; rc[p] = rc[old];
+    
+    if (pos <= M) lc[p] = update(lc[old], st, M, pos, val);
+    else rc[p] = update(rc[old], M + 1, ed, pos, val);
+    
+    seg[p] = merge(seg[lc[p]], seg[rc[p]]);
     return p;
 }
 
-int build(int st,int ed){
-    if(st==ed) return new_leaf(-2e5);
-    return Merge(build(st,M), build(M+1,ed));
+Node query(int node, int st, int ed, int l, int r) {
+    if (r < st || l > ed || !node) return Node(); 
+    if (l <= st && ed <= r) return seg[node];
+    
+    if (r <= M) return query(lc[node], st, M, l, r);
+    if (l > M) return query(rc[node], M + 1, ed, l, r);
+    
+    return merge(query(lc[node], st, M, l, r), 
+                 query(rc[node], M + 1, ed, l, r));
 }
-
-int update(int old,int st,int ed,int pos,int val){
-    if(st==ed) return new_leaf(val);
-
-    if(pos<=M)
-        return Merge(update(L[old],st,M,pos,val), R[old]);
-    else
-        return Merge(L[old], update(R[old],M+1,ed,pos,val));
-}
-
-Node query(int node,int st,int ed,int l,int r){
-    if(r<st || l>ed) return Node();
-
-    if(l<=st && ed<=r)
-        return Seg[node];
-
-    Node a = query(L[node],st,M,l,r);
-    Node b = query(R[node],M+1,ed,l,r);
-
-    return Node::merge(a,b);
-}
-
