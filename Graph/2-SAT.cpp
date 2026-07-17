@@ -1,81 +1,127 @@
+// Cheat sheet
+
+/*
+========================================================================================
+                             2-SAT CONSTRAINTS CHEAT SHEET (FULL VERSION)
+========================================================================================
+Use this table to translate problem statements directly into template function calls.
+Note: 'false' means the variable is normal (A), 'true' means it is negated (!A).
+
+--- 1. FORCING VARIABLES (1-Variable) ---
+| Problem Constraint                               | Logic      | Function Call                |
+|--------------------------------------------------|------------|------------------------------|
+| Force A to be permanently True                   | A          | force(A, false)              |
+| Force A to be permanently False                  | !A         | force(A, true)               |
+
+--- 2. AT LEAST / AT MOST (OR logic) ---
+| Problem Constraint                               | Logic      | Function Call                |
+|--------------------------------------------------|------------|------------------------------|
+| Must pick at least one of A or B                 | A or B     | add_or(A, false, B, false)   |
+| Cannot pick both A and B (At most one)           | !A or !B   | add_or(A, true, B, true)     |
+| A and B cannot both be False                     | A or B     | add_or(A, false, B, false)   |
+| Either A is True, or B is False                  | A or !B    | add_or(A, false, B, true)    |
+
+--- 3. EXACTLY / EQUIVALENCE (XOR / XNOR logic) ---
+| Problem Constraint                               | Logic      | Function Call                |
+|--------------------------------------------------|------------|------------------------------|
+| Exactly one of A or B must be True               | A ^ B      | add_xor(A, false, B, false)  |
+| A and B must be completely opposite              | A != B     | add_xor(A, false, B, false)  |
+| Must choose identical options (Both or Neither)  | A == B     | add_xnor(A, false, B, false) |
+| If one is False, the other must be False         | A == B     | add_xnor(A, false, B, false) |
+
+--- 4. IMPLICATIONS (IF-THEN logic) ---
+| Problem Constraint                               | Logic      | Function Call                |
+|--------------------------------------------------|------------|------------------------------|
+| If you pick A, you MUST pick B                   | A => B     | add_imp(A, false, B, false)  |
+| If you pick A, you CANNOT pick B                 | A => !B    | add_imp(A, false, B, true)   |
+| If you DON'T pick A, you MUST pick B             | !A => B    | add_imp(A, true, B, false)   |
+| If you DON'T pick A, you CANNOT pick B           | !A => !B   | add_imp(A, true, B, true)    |
+
+--- 5. COMPOUND CONSTRAINTS (Multi-step) ---
+| Problem Constraint                               | How to code it in the template        |
+|--------------------------------------------------|---------------------------------------|
+| A and B MUST BOTH be True                        | force(A, false); force(B, false);     |
+| A and B MUST BOTH be False                       | force(A, true); force(B, true);       |
+| If A is True, then BOTH B and C must be True     | add_imp(A, false, B, false);          |
+|                                                  | add_imp(A, false, C, false);          |
+| If A is True, then BOTH B and C must be False    | add_imp(A, false, B, true);           |
+|                                                  | add_imp(A, false, C, true);           |
+========================================================================================
+*/
+
+
+
+
+
+
 // CP-Algo
 
+// Variables are 0-indexed. 'na' means "Is Negated A?".
+// Example: add_or(x, false, y, true) creates clause: (x OR !y)
 
-struct _2_SAT {
-    int m;
+struct TwoSAT {
     int n;
-    vector<vector<int>> gr, gr_;
-    vector<bool> vis;
+    vector<vector<int>> adj, radj;
     vector<int> order, comp;
-    vector<bool> rt;
+    vector<bool> vis, ans;
 
-    _2_SAT (int _n_vars) : m(_n_vars), n(2 * m), gr(n), gr_(n), vis(n), order(), comp(n, -1), rt(m) {
-        order.reserve(n);
+    TwoSAT(int _n) : n(_n) {
+        adj.assign(2 * n, vector<int>());
+        radj.assign(2 * n, vector<int>());
+        ans.assign(n, false);
     }
-    void dfs1(int node) {
-        vis[node] = true;
-        for (int ch : gr[node]) {
-            if (!vis[ch])
-                dfs1(ch);
+
+    // Helper: converts (variable index, is_negated) -> graph node index
+    int get_id(int x, bool is_neg) { return (x << 1) | is_neg; }
+
+    void add_edge(int u, int v) {
+        adj[u].push_back(v);
+        radj[v].push_back(u);
+    }
+
+    // Core primitive: a => b
+    void add_imp(int a, bool na, int b, bool nb) {
+        int u = get_id(a, na), v = get_id(b, nb);
+        add_edge(u, v);
+        add_edge(v ^ 1, u ^ 1);
+    }
+
+    // Logical gate wrappers
+    void add_or(int a, bool na, int b, bool nb) { add_imp(a, !na, b, nb); }
+    void add_xor(int a, bool na, int b, bool nb) { add_or(a, na, b, nb); add_or(a, !na, b, !nb); }
+    void add_xnor(int a, bool na, int b, bool nb) { add_or(a, na, b, !nb); add_or(a, !na, b, nb); }
+    void force(int a, bool na) { int u = get_id(a, na); add_edge(u ^ 1, u); }
+
+    void dfs1(int u) {
+        vis[u] = true;
+        for (int v : adj[u]) if (!vis[v]) dfs1(v);
+        order.push_back(u);
+    }
+
+    void dfs2(int u, int c) {
+        comp[u] = c;
+        for (int v : radj[u]) if (comp[v] == -1) dfs2(v, c);
+    }
+
+    bool solve() {
+        vis.assign(2 * n, false); order.clear();
+        for (int i = 0; i < 2 * n; ++i) if (!vis[i]) dfs1(i);
+        comp.assign(2 * n, -1);
+        int c = 0;
+        for (int i = 2 * n - 1; i >= 0; --i) {
+            int u = order[i];
+            if (comp[u] == -1) dfs2(u, c++);
         }
-        order.push_back(node);
-    }
-
-    void dfs2(int node, int cl) {
-        comp[node] = cl;
-        for (int ch : gr_[node]) {
-            if (comp[ch] == -1)
-                dfs2(ch, cl);
-        }
-    }
-
-    bool solve_2SAT() {
-        order.clear();
-        vis.assign(n, false);
         for (int i = 0; i < n; ++i) {
-            if (!vis[i])
-                dfs1(i);
-        }
-
-        comp.assign(n, -1);
-        for (int i = 0, j = 0; i < n; ++i) {
-            int node = order[n - i - 1];
-            if (comp[node] == -1)
-                dfs2(node, j++);
-        }
-
-        rt.assign(m, false);
-        for (int i = 0; i < n; i += 2) {
-            if (comp[i] == comp[i + 1])
-                return false;
-            rt[i / 2] = comp[i] > comp[i + 1];
+            if (comp[i << 1] == comp[(i << 1) | 1]) return false;
+            ans[i] = comp[i << 1] > comp[(i << 1) | 1];
         }
         return true;
     }
-
-    void add_disjunction(int a, bool na, int b, bool nb) {
-        // na and nb signify whether a and b are to be negated
-        a = 2 * a ^ na;
-        b = 2 * b ^ nb;
-        int neg_a = a ^ 1;
-        int neg_b = b ^ 1;
-        gr[neg_a].push_back(b);
-        gr[neg_b].push_back(a);
-        gr_[b].push_back(neg_a);
-        gr_[a].push_back(neg_b);
-    }
-
-    static void example_usage() {
-        _2_SAT solver(3); // a, b, c
-        solver.add_disjunction(0, false, 1, true);  //     a  v  not b
-        solver.add_disjunction(0, true, 1, true);   // not a  v  not b
-        solver.add_disjunction(1, false, 2, false); //     b  v      c
-        solver.add_disjunction(0, false, 0, false); //     a  v      a
-        assert(solver.solve_2SAT() == true);
-        auto expected = vector<bool>(True, False, True);
-        assert(solver.rt == expected);
-    }
 };
+
+
+
 
 // Bedoo
 
