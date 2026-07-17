@@ -1,48 +1,40 @@
-template<typename T>
-struct fenwick_tree {
-    int n{};
-    vector<T> bit;
-    const T DEFAULT = 0;
+// USE CASE: Point Updates, Range Queries.
+// TRICK: Includes Binary Lifting to find the K-th smallest element in O(log N)
+// WARNING: Fenwick Trees MUST be 1-indexed. Index 0 will infinite loop!
 
-    fenwick_tree() = default;
+const int MAXN = 200005;
+const int LOG = 20; // log2(MAXN)
 
-    void init(int n_) {
-        this->n = n_;
-        bit.assign(n_ + 1, DEFAULT);
-    }
+long long bit[MAXN];
 
-    explicit fenwick_tree(int n) {
-        init(n);
-    }
-    //   lazm tdyha vector 1-based
-    explicit fenwick_tree(vector<T> &v) : fenwick_tree(int(v.size())) {
-        int idx = 1;
-        while (idx < n) {
-            add(idx , v[idx]);
-            idx++;
+void add(int idx, long long val) {
+    for (; idx < MAXN; idx += idx & -idx)
+        bit[idx] += val;
+}
+
+long long query(int idx) {
+    long long sum = 0;
+    for (; idx > 0; idx -= idx & -idx)
+        sum += bit[idx];
+    return sum;
+}
+
+// Sum of range [l, r]
+long long query(int l, int r) {
+    if (l > r) return 0;
+    return query(r) - query(l - 1);
+}
+
+// Finds the 1-based index of the k-th smallest element (if elements are frequencies)
+// Equivalent to finding the first index where prefix sum >= k
+int get_kth(long long k) {
+    int idx = 0;
+    for (int i = LOG; i >= 0; i--) {
+        int next_idx = idx + (1 << i);
+        if (next_idx < MAXN && bit[next_idx] < k) {
+            idx = next_idx;
+            k -= bit[idx];
         }
     }
-
-    void add(int idx, T value) {
-        while (idx <= n) {
-            bit[idx] += value;
-            idx += idx & -idx;
-        }
-    }
-
-    T prefix(int idx) {
-        T ret = 0;
-        while (idx) {
-            ret += bit[idx];
-            idx ^= idx & -idx;
-        }
-        return ret;
-    }
-
-    T rangeSum(int l, int r) {
-        if (l > r)
-            return 0;
-        return prefix(r) - prefix(l - 1);
-    }
-
-};
+    return idx + 1;
+}
