@@ -95,6 +95,16 @@ long long c(int n, int k) {
     return result;
 }
 
+long long nCr(long long n, long long k) {
+    k = min(k, n - k);
+    __int128 res = 1;
+
+    for (long long i = 1; i <= k; i++)
+        res = res * (n - k + i) / i;
+
+    return (long long)res;
+}
+
 ll p(int n, int k) {
     ll result = 1;
     for (int i = 0; i < k; ++i) {
