@@ -82,8 +82,8 @@ int nCr(int n, int r) {
     return divi(fact[n], mult(fact[r], fact[n-r]));
 }
 
-int sNb(int n, int k) {
-    return nCr(n+k-1, n);
+int sNb(int stars ,int bars) {
+    return nCr(stars + bars , min(stars , (stars + bars) - stars));
 }
 --------------------------------------------------
 long long c(int n, int k) {
