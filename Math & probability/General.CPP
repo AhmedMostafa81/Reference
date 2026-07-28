@@ -85,6 +85,25 @@ int nCr(int n, int r) {
 int sNb(int stars ,int bars) {
     return nCr(stars + bars , min(stars , (stars + bars) - stars));
 }
+-------------------------------------------------
+// 2. Precompute factorials and their modular inverses
+void precompute() {
+    fact[0] = 1;
+    invFact[0] = 1;
+    
+    // Calculate all factorials normally
+    for (int i = 1; i < MAXN; i++) {
+        fact[i] = (fact[i - 1] * i) % MOD;
+    }
+    
+    // Fermat's Little Theorem for the inverse of the maximum factorial
+    invFact[MAXN - 1] = power(fact[MAXN - 1], MOD - 2);
+    
+    // Calculate the rest backwards in O(N)
+    for (int i = MAXN - 2; i >= 1; i--) {
+        invFact[i] = (invFact[i + 1] * (i + 1)) % MOD;
+    }
+}
 --------------------------------------------------
 long long c(int n, int k) {
      long long result = 1;
