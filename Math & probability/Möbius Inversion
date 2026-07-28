@@ -1,0 +1,26 @@
+∑_{d∣n} μ(d) = {
+  1, if n = 1
+  0, if n > 1
+}
+=====================
+If f and g are arithmetic functions such that
+
+f(n) = ∑_{d∣n} g(d),
+
+then
+
+g(n) = ∑_{d∣n} μ(d)f(n/d)
+     = ∑_{d∣n} μ(n/d)f(d).
+=====================
+If f and g are arithmetic functions such that
+
+f(n) = ∏_{d∣n} g(d),
+
+then
+
+g(n) = ∏_{d∣n} f(n/d)^μ(d)
+     = ∏_{d∣n} f(d)^μ(n/d).
+
+============================================
+// Examples
+
