@@ -48,3 +48,53 @@ struct ImplicitSegTree {
                query(rc[node], mid + 1, e, l, r);
     }
 };
+
+
+
+
+#include <iostream>
+
+using namespace std;
+
+// ... [Paste the ImplicitSegTree struct here] ...
+ImplicitSegTree tree;
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    int q;
+    if (!(cin >> q)) return 0;
+
+    tree.init();
+    
+    // The domain of our problem. 
+    // Must be long long to avoid overflow when doing (lx + rx) >> 1
+    const long long MIN_X = 1;
+    const long long MAX_X = 1e9; 
+
+    while (q--) {
+        int type;
+        cin >> type;
+
+        if (type == 1) {
+            // Point Update: Add `val` to coordinate `pos`
+            long long pos, val;
+            cin >> pos >> val;
+            
+            // Note: We pass tree.root, and because it's passed by reference in 
+            // the struct, the very first update will assign tree.root = 1.
+            tree.update(tree.root, MIN_X, MAX_X, pos, val);
+        } 
+        else if (type == 2) {
+            // Range Query: Sum from coordinate `L` to `R`
+            long long L, R;
+            cin >> L >> R;
+            
+            long long ans = tree.query(tree.root, MIN_X, MAX_X, L, R);
+            cout << ans << "\n";
+        }
+    }
+
+    return 0;
+}
