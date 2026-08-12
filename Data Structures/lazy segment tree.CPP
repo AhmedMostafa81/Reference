@@ -1,78 +1,93 @@
+const long long inf = 1e18; 
 struct Node {
-    int mn=inf;
+    long long mn = inf;
 }neutral;
-
-struct lazy_segment_tree{
+ 
+struct lazy_segment_tree {
     int sz;
-    vector<Node>tree;
-    vector<int>lazy;
-    void init(int n){
-        sz=1;
-        while(sz < n)sz*=2;
-        tree.assign(2*sz,neutral);
-        lazy.assign(2*sz,0);
+    vector<Node> tree;
+    vector<long long> lazy;
+
+    void init(int n) {
+        sz = 1;
+        while (sz < n) sz *= 2;
+        tree.assign(2 * sz, neutral);
+        lazy.assign(2 * sz, 0);
     }
 
-    Node merge(Node a,Node b) {
-        Node rt ;
-        rt.mn = min(a.mn , b.mn);
+    Node merge(const Node& a, const Node& b) {
+        Node rt;
+        rt.mn = min(a.mn, b.mn);
         return rt;
     }
 
-    void prop(int node) {
-        tree[node].mn+=lazy[node];
-        if (node*2+1 < 2*sz)
-            lazy[node*2+1]+=lazy[node];
-        if (node*2+2 < 2*sz)
-            lazy[node*2+2]+=lazy[node];
-        lazy[node]=0;
+    void apply(int node, long long val) {
+        tree[node].mn += val;
+        lazy[node] += val;
     }
 
-    void set(int i ,int v,int node,int lx,int rx){
-        if (rx-lx==1) {
+    void prop(int node, int s, int e) {
+        if (!lazy[node] || e - s == 1) return; 
+        
+        apply(node * 2 + 1, lazy[node]);
+        apply(node * 2 + 2, lazy[node]);
+        
+        lazy[node] = 0;
+    }
+
+    void set(int i, int v, int node, int s, int e) {
+        if (e - s == 1) {
             tree[node].mn = v;
-            return ;
+            lazy[node] = 0; 
+            return;
         }
-        int mid = (lx+rx)/2;
-        if (i<mid)
-            set(i,v,node*2+1,lx,mid);
-        else
-            set(i,v,node*2+2,mid,rx);
-        tree[node] = merge(tree[node*2+1] , tree[node*2+2]);
+        prop(node, s, e); 
+        
+        int mid = (s + e) >> 1;
+        if (i < mid)
+            set(i, v, node * 2 + 1, s, mid);
+        else        
+            set(i, v, node * 2 + 2, mid, e);
+        
+        tree[node] = merge(tree[node * 2 + 1], tree[node * 2 + 2]);
     }
 
-    void set(int i,int v){
-        set(i,v,0,0,sz);
+    void set(int i, int v) {
+        set(i, v, 0, 0, sz);
     }
 
-    void update(int l,int r,int val,int node,int s,int e) {
-        prop(node);
-        if (s>=l && e<=r) {
-            lazy[node] += val;
-            prop(node);
-            return ;
+    void update(int l, int r, int val, int node, int s, int e) {
+        if (s >= r || e <= l) return; 
+        if (s >= l && e <= r) {  
+            apply(node, val); 
+            return;
         }
-        if (s>=r || e<=l)return ;
-        int mid = (s+e)>>1;
-        update(l,r,val,node*2+1,s,mid);
-        update(l,r,val,node*2+2,mid,e);
-        tree[node] = merge(tree[node*2+1] , tree[node*2+2]);
+        prop(node, s, e); 
+        
+        int mid = (s + e) >> 1;
+        update(l, r, val, node * 2 + 1, s, mid);
+        update(l, r, val, node * 2 + 2, mid, e);
+        
+        tree[node] = merge(tree[node * 2 + 1], tree[node * 2 + 2]);
     }
 
-    void update(int l,int r,int val) {
-        update(l,r,val,0,0,sz);
+    void update(int l, int r, int val) {
+        update(l, r, val, 0, 0, sz);
     }
 
-    Node mn(int l,int r,int node,int s,int e){
-        prop(node);
+    Node query(int l, int r, int node, int s, int e) { 
         if (s >= r || e <= l) return neutral;
-        if (s>=l && e<=r)return tree[node];
-        int mid=(s+e)/2;
-        return merge( mn(l,r,node*2+1,s,mid),mn(l,r,node*2+2,mid,e));
+        if (s >= l && e <= r) return tree[node];
+        
+        prop(node, s, e);
+        
+        int mid = (s + e) >> 1;
+        return merge(query(l, r, node * 2 + 1, s, mid), 
+                     query(l, r, node * 2 + 2, mid, e));
     }
 
-    int mn(int l,int r){
-        return mn(l,r,0,0,sz).mn;
+    long long query(int l, int r) {
+        return query(l, r, 0, 0, sz).mn;
     }
 };
 
