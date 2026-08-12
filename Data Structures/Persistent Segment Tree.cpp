@@ -59,8 +59,14 @@ struct persistent_segment_tree {
 
 #define M ((st + ed) >> 1)
 
-const int MAXN = 200005, MAXQ = 200005, LOG = 20;
-const int SZ = (MAXN * 4) + (MAXQ * LOG) + 5; 
+const int MAXN = 200005;
+const int MAXQ = 200005;
+const int UPDATES_PER_QUERY = 3; // Number of updates performed per query
+const int MAX_UPDATES = MAXQ * UPDATES_PER_QUERY;
+const int LOG = 20;
+
+// Base tree build + total node allocations from all updates
+const int SZ = (MAXN * 4) + (MAX_UPDATES * LOG) + 5;
 
 int ptr = 1;
 int lc[SZ], rc[SZ];
@@ -111,8 +117,14 @@ long long query(int L_node, int R_node, int st, int ed, int k) {
 
 #define M ((st + ed) >> 1)
 
-const int MAXN = 100005, MAXQ = 100005, LOG = 20;
-const int SZ = (MAXN * 4) + (MAXQ * LOG) + 5; 
+const int MAXN = 200005;
+const int MAXQ = 200005;
+const int UPDATES_PER_QUERY = 3; // Number of updates performed per query
+const int MAX_UPDATES = MAXQ * UPDATES_PER_QUERY;
+const int LOG = 20;
+
+// Base tree build + total node allocations from all updates
+const int SZ = (MAXN * 4) + (MAX_UPDATES * LOG) + 5;
 
 int ptr = 1;
 int lc[SZ], rc[SZ];
