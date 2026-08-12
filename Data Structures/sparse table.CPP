@@ -72,7 +72,7 @@ struct SparseTable2D {
         return min(a,b);
     }
 
-    SparseTable2D(vector<vector<int>>& a) {
+    SparseTable2D(vector<vector<int>>& a) { //  O(n * m * log(n) * log(m))
         n = a.size();
         m = a[0].size();
 
@@ -112,7 +112,7 @@ struct SparseTable2D {
             }
     }
 
-    int query(int x1,int y1,int x2,int y2){
+    int query(int x1,int y1,int x2,int y2){  // O(1)
         int kx = lg[x2-x1+1];
         int ky = lg[y2-y1+1];
 
