@@ -66,62 +66,73 @@ struct SparseTable2D {
     int n, m;
     int LOGN, LOGM;
     vector<int> lg;
-    vector<vector<vector<vector<int>>>> st;
+    
+    vector<int> st;
 
-    int merge(int a, int b){
-        return min(a,b);
+    inline int idx(int x, int y, int i, int j) const {
+        return ((x * LOGM + y) * n + i) * m + j;
     }
 
-    SparseTable2D(vector<vector<int>>& a) { //  O(n * m * log(n) * log(m))
+    inline int merge(int a, int b) const {
+        return min(a, b);
+    }
+
+    SparseTable2D(const vector<vector<int>>& a) { // O(n * m * log(n) * log(m))
+        if (a.empty() || a[0].empty()) return;
+        
         n = a.size();
         m = a[0].size();
 
         lg.assign(max(n, m) + 1, 0);
         for (int i = 2; i < (int)lg.size(); i++)
-            lg[i] = lg[i/2] + 1;
+            lg[i] = lg[i / 2] + 1;
 
         LOGN = lg[n] + 1;
         LOGM = lg[m] + 1;
 
-        st.assign(LOGN,
-            vector<vector<vector<int>>>(LOGM,
-                vector<vector<int>>(n,
-                    vector<int>(m))));
+        st.resize(LOGN * LOGM * n * m);
 
-        for (int i = 0; i < n; i++)
-            for (int j = 0; j < m; j++)
-                st[0][0][i][j] = a[i][j];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                st[idx(0, 0, i, j)] = a[i][j];
+            }
+        }
 
-        for (int x = 0; x < LOGN; x++)
+        for (int x = 0; x < LOGN; x++) {
             for (int y = 0; y < LOGM; y++) {
-
                 if (x == 0 && y == 0) continue;
 
-                for (int i = 0; i + (1<<x) <= n; i++)
-                    for (int j = 0; j + (1<<y) <= m; j++) {
-
-                        if (x)
-                            st[x][y][i][j] =
-                                merge(st[x-1][y][i][j],
-                                      st[x-1][y][i+(1<<(x-1))][j]);
-                        else
-                            st[x][y][i][j] =
-                                merge(st[x][y-1][i][j],
-                                      st[x][y-1][i][j+(1<<(y-1))]);
+                for (int i = 0; i + (1 << x) <= n; i++) {
+                    for (int j = 0; j + (1 << y) <= m; j++) {
+                        
+                        if (x) {
+                            st[idx(x, y, i, j)] = merge(
+                                st[idx(x - 1, y, i, j)],
+                                st[idx(x - 1, y, i + (1 << (x - 1)), j)]
+                            );
+                        } else {
+                            st[idx(x, y, i, j)] = merge(
+                                st[idx(x, y - 1, i, j)],
+                                st[idx(x, y - 1, i, j + (1 << (y - 1)))]
+                            );
+                        }
+                        
                     }
+                }
             }
+        }
     }
 
-    int query(int x1,int y1,int x2,int y2){  // O(1)
-        int kx = lg[x2-x1+1];
-        int ky = lg[y2-y1+1];
+    int query(int x1, int y1, int x2, int y2) const {  // O(1)
+        int kx = lg[x2 - x1 + 1];
+        int ky = lg[y2 - y1 + 1];
 
-        int a1 = st[kx][ky][x1][y1];
-        int a2 = st[kx][ky][x2-(1<<kx)+1][y1];
-        int a3 = st[kx][ky][x1][y2-(1<<ky)+1];
-        int a4 = st[kx][ky][x2-(1<<kx)+1][y2-(1<<ky)+1];
+        int a1 = st[idx(kx, ky, x1, y1)];
+        int a2 = st[idx(kx, ky, x2 - (1 << kx) + 1, y1)];
+        int a3 = st[idx(kx, ky, x1, y2 - (1 << ky) + 1)];
+        int a4 = st[idx(kx, ky, x2 - (1 << kx) + 1, y2 - (1 << ky) + 1)];
 
-        return merge(merge(a1,a2), merge(a3,a4));
+        return merge(merge(a1, a2), merge(a3, a4));
     }
 };
 
