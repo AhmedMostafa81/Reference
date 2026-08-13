@@ -24,7 +24,7 @@ struct ST { // sparse table version 1
                 t[j][i]=merge(t[j-1][i],
                               t[j-1][i+(1<<(j-1))]);
     }
-
+    // 0 based (right INCLUSIVE)
     int get(int l,int r){
         int j=log[r-l+1];
         return merge(t[j][l], t[j][r-(1<<j)+1]);
