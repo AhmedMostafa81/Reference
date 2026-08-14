@@ -1,19 +1,25 @@
-const int N = , LOG = ;
+#include <bits/stdc++.h>
+using namespace std;
+
+const int N = 200005, LOG = 20;
 vector<int> gr[N];
-int  in[N], out[N], tim, up[N][LOG];
+int in[N], out[N], tim, up[N][LOG];
+long long val[N], mx[N][LOG];
 
 void pre(int node = 1, int par = 1){
     in[node] = ++tim;
     up[node][0] = par;
+    mx[node][0] = max(val[node], val[par]); // Inclusive segment
 
-    for (int i = 1; i < LOG; i++)
+    for (int i = 1; i < LOG; i++) {
         up[node][i] = up[up[node][i-1]][i-1];
+        mx[node][i] = max(mx[node][i-1], mx[up[node][i-1]][i-1]);
+    }
 
     for (auto ch : gr[node]){
         if (ch == par) continue;
         pre(ch, node);
     }
-
     out[node] = ++tim;
 }
 
@@ -22,10 +28,8 @@ bool if_anc(int x, int y){
 }
 
 int LCA(int x, int y){
-    if (if_anc(x, y))
-        return x;
-    if (if_anc(y, x))
-        return y;
+    if (if_anc(x, y)) return x;
+    if (if_anc(y, x)) return y;
 
     for (int i = LOG - 1; i >= 0; i--)
         if (!if_anc(up[x][i], y))
@@ -34,7 +38,106 @@ int LCA(int x, int y){
     return up[x][0];
 }
 
+long long get_max_up(int u, int anc) {
+    if (u == anc) return val[u];
+    long long res = val[u];
+    
+    for (int i = LOG - 1; i >= 0; i--) {
+        if (!if_anc(up[u][i], anc)) {
+            res = max(res, mx[u][i]);
+            u = up[u][i];
+        }
+    }
+    return max(res, mx[u][0]);
+}
 
+long long query_max(int u, int v) {
+    int lca = LCA(u, v);
+    return max(get_max_up(u, lca), get_max_up(v, lca));
+}
+
+// another version
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int N = 200005, LOG = 20;
+vector<int> gr[N];
+int in[N], out[N], tim, up[N][LOG];
+
+struct Node {
+    long long val = 0;
+    int len = 0; 
+} val[N], up_val[N][LOG], dn_val[N][LOG];
+
+Node combine(Node a, Node b) {
+    if (a.len == 0) return b; // Identity check
+    if (b.len == 0) return a;
+    
+    // REPLACE THIS with Hash, Matrix Mult, etc.
+    return {a.val + b.val, a.len + b.len}; 
+}
+
+void pre(int node = 1, int par = 1){
+    in[node] = ++tim;
+    up[node][0] = par;
+    up_val[node][0] = dn_val[node][0] = val[node]; // Half-open interval
+
+    for (int i = 1; i < LOG; i++) {
+        up[node][i] = up[up[node][i-1]][i-1];
+        
+        // UP: path goes bottom-up. DOWN: path goes top-down.
+        up_val[node][i] = combine(up_val[node][i-1], up_val[up[node][i-1]][i-1]);
+        dn_val[node][i] = combine(dn_val[up[node][i-1]][i-1], dn_val[node][i-1]);
+    }
+
+    for (auto ch : gr[node]){
+        if (ch == par) continue;
+        pre(ch, node);
+    }
+    out[node] = ++tim;
+}
+
+bool if_anc(int x, int y){
+    return in[x] <= in[y] && out[x] >= out[y];
+}
+
+int LCA(int x, int y){
+    if (if_anc(x, y)) return x;
+    if (if_anc(y, x)) return y;
+
+    for (int i = LOG - 1; i >= 0; i--)
+        if (!if_anc(up[x][i], y))
+            x = up[x][i];
+
+    return up[x][0];
+}
+
+Node query_path(int u, int v) {
+    int lca = LCA(u, v);
+    Node left_res, right_res;
+
+    // 1. Jump u up to LCA
+    for (int i = LOG - 1; i >= 0; i--) {
+        if (!if_anc(up[u][i], lca)) {
+            left_res = combine(left_res, up_val[u][i]);
+            u = up[u][i];
+        }
+    }
+    if (u != lca) left_res = combine(left_res, up_val[u][0]);
+
+    // 2. Jump v up to LCA (Prepend to right_res!)
+    for (int i = LOG - 1; i >= 0; i--) {
+        if (!if_anc(up[v][i], lca)) {
+            right_res = combine(dn_val[v][i], right_res); 
+            v = up[v][i];
+        }
+    }
+    if (v != lca) right_res = combine(dn_val[v][0], right_res);
+
+    // 3. Merge: Left path -> LCA node -> Right path
+    return combine(left_res, combine(val[lca], right_res));
+}
 
 
 
