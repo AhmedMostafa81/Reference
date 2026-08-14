@@ -1,88 +1,112 @@
-//    ->     max flow == min cut (edges have cost and i want to get minimum cost to disconnect src and sink)
-// maximum edge disjoint path (no two paths share the same edge)
-// maximum independent path (no two paths share the same edge or the same node) (add constraint on vertex)
+    ================================================================================
+    MAX FLOW / MIN CUT THEORIES & MODELING CHEAT SHEET
+    ================================================================================
 
-// minimum path cover (minimum number of paths that covers all graph without sharing edges) (DAG)
-//   = n - max_matching
+    1. Max Flow == Min Cut
+       The maximum flow from S to T equals the minimum capacity of edges you 
+       need to remove to completely disconnect S from T.
 
+    2. Vertex Capacities (Node splitting)
+       If a NODE `u` has a capacity `C` (can only be visited C times), split it:
+       Create `u_in` and `u_out`. Add edge: (u_in -> u_out) with capacity C.
+       All incoming edges go to `u_in`. All outgoing edges leave from `u_out`.
+
+    3. Undirected Edges
+       Add directed edge (u -> v, cap) AND (v -> u, cap). (Helper added in Dinic)
+
+    4. Bipartite Matching (Konig's Theorem)
+       - Max Bipartite Matching = Max Flow (S -> L, L -> R, R -> T, all caps = 1)
+       - Min Vertex Cover (Bipartite) = Max Bipartite Matching
+       - Max Independent Set (Bipartite) = Total Vertices - Max Matching
+
+    5. Minimum Path Cover in a DAG (Directed Acyclic Graph)
+       Find the minimum number of paths to visit every node exactly once.
+       - Answer = V - MaxBipartiteMatching
+       - To build: Split every node `u` into `u_out` (Left) and `u_in` (Right).
+         For every edge u->v in DAG, add edge `u_out` -> `v_in` with cap 1.
+    6. Maximum Weight Closure
+
+Think of projects as positive nodes and tools/costs as negative nodes.
+
+A project gives profit.
+A tool has a cost, and multiple projects can use the same tool, so we pay for that tool only once.
+If a project requires a tool, choosing the project forces us to choose that tool.
+Max Flow Construction
+Positive node:   S → node     capacity = profit
+Negative node:   node → T     capacity = cost
+Requirement:     project → tool   capacity = INF
+
+Interpret:
+S-side = chosen
+T-side = not chosen
+The INF edge guarantees that:
+choose project → must choose required tool
+So the min-cut represents:
+lost profits + costs of chosen tools
+Therefore:
+Answer = sum of all positive profits − MaxFlow
+
+Important: If several chosen projects need the same tool, that tool is selected once, so its cost is paid once.
+==============================================================================
 
 // slow max flow
 // O(V * E^2)
 
-#include<bits/stdc++.h>
-using namespace std;
-#define int long long
-#define AhmedPlusPlus ios::sync_with_stdio(0);cin.tie(0);cout.tie(0);
-#define hi cerr<<"HI\n";
+struct EdmondsKarp {
+    int n;
+    vector<vector<long long>> capacity;
+    vector<vector<int>> adj;
 
-/*                        ->    NO CLEAN CODE HERE    <-                        */
+    EdmondsKarp(int n) : n(n), capacity(n, vector<long long>(n, 0)), adj(n) {}
 
+    void add_edge(int u, int v, long long cap) {
+        if (capacity[u][v] == 0 && capacity[v][u] == 0) {
+            adj[u].push_back(v);
+            adj[v].push_back(u);
+        }
+        capacity[u][v] += cap;
+    }
 
-int n;
-vector<vector<int>> capacity(N , vector<int>(N));
-vector<vector<int>> adj(N);
+    long long bfs(int s, int t, vector<int>& parent) {
+        fill(parent.begin(), parent.end(), -1);
+        parent[s] = -2;
+        queue<pair<int, long long>> q;
+        q.push({s, 1e18});
 
-int bfs(int s, int t, vector<int>& parent) {
-    fill(parent.begin(), parent.end(), -1);
-    parent[s] = -2;
-    queue<pair<int, int>> q;
-    q.push({s, 1e9});
+        while (!q.empty()) {
+            int cur = q.front().first;
+            long long flow = q.front().second;
+            q.pop();
 
-    while (!q.empty()) {
-        int cur = q.front().first;
-        int flow = q.front().second;
-        q.pop();
-
-        for (int next : adj[cur]) {
-            if (parent[next] == -1 && capacity[cur][next]) {
-                parent[next] = cur;
-                int new_flow = min(flow, capacity[cur][next]);
-                if (next == t)
-                    return new_flow;
-                q.push({next, new_flow});
+            for (int next : adj[cur]) {
+                if (parent[next] == -1 && capacity[cur][next] > 0) {
+                    parent[next] = cur;
+                    long long new_flow = min(flow, capacity[cur][next]);
+                    if (next == t) return new_flow;
+                    q.push({next, new_flow});
+                }
             }
         }
+        return 0;
     }
 
-    return 0;
-}
+    long long maxflow(int s, int t) {
+        long long flow = 0, new_flow;
+        vector<int> parent(n);
 
-int maxflow(int s, int t) {
-    int flow = 0;
-    vector<int> parent(n);
-    int new_flow;
-
-    while (new_flow = bfs(s, t, parent)) {
-        flow += new_flow;
-        int cur = t;
-        while (cur != s) {
-            int prev = parent[cur];
-            capacity[prev][cur] -= new_flow;
-            capacity[cur][prev] += new_flow;
-            cur = prev;
+        while ((new_flow = bfs(s, t, parent))) {
+            flow += new_flow;
+            int cur = t;
+            while (cur != s) {
+                int prev = parent[cur];
+                capacity[prev][cur] -= new_flow;
+                capacity[cur][prev] += new_flow;
+                cur = prev;
+            }
         }
+        return flow;
     }
-
-    return flow;
-}
-
-signed main() {
-/* ^^^ */    AhmedPlusPlus    /* ^^^ */
-
-//    ->> practice makes perfect
-
-    n = ;
-
-    int q;cin>>q;
-    while(q--){
-        int x,y,c;cin>>x>>y>>c;
-        adj[x].push_back(y);
-        adj[y].push_back(x);
-        capacity[x][y] = c;
-    }
-    cout << maxflow(S , T);
-
-}
+};
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //    fast max flow
 
