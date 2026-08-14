@@ -1,9 +1,11 @@
+
+/*
     ================================================================================
     MAX FLOW / MIN CUT THEORIES & MODELING CHEAT SHEET
     ================================================================================
 
     1. Max Flow == Min Cut
-       The maximum flow from S to T equals the minimum capacity of edges you 
+       The maximum flow from S to T equals the minimum capacity of edges you
        need to remove to completely disconnect S from T.
 
     2. Vertex Capacities (Node splitting)
@@ -25,29 +27,30 @@
        - To build: Split every node `u` into `u_out` (Left) and `u_in` (Right).
          For every edge u->v in DAG, add edge `u_out` -> `v_in` with cap 1.
     6. Maximum Weight Closure
+        Think of projects as positive nodes and tools/costs as negative nodes.
 
-Think of projects as positive nodes and tools/costs as negative nodes.
+        A project gives profit.
+        A tool has a cost, and multiple projects can use the same tool, so we pay for that tool only once.
+        If a project requires a tool, choosing the project forces us to choose that tool.
+        Max Flow Construction
+        Positive node:   S → node     capacity = profit
+        Negative node:   node → T     capacity = cost
+        Requirement:     project → tool   capacity = INF
 
-A project gives profit.
-A tool has a cost, and multiple projects can use the same tool, so we pay for that tool only once.
-If a project requires a tool, choosing the project forces us to choose that tool.
-Max Flow Construction
-Positive node:   S → node     capacity = profit
-Negative node:   node → T     capacity = cost
-Requirement:     project → tool   capacity = INF
+        Interpret:
+        S-side = chosen
+        T-side = not chosen
+        The INF edge guarantees that:
+        choose project → must choose required tool
+        So the min-cut represents:
+        lost profits + costs of chosen tools
+        Therefore:
+        Answer = sum of all positive profits − MaxFlow
 
-Interpret:
-S-side = chosen
-T-side = not chosen
-The INF edge guarantees that:
-choose project → must choose required tool
-So the min-cut represents:
-lost profits + costs of chosen tools
-Therefore:
-Answer = sum of all positive profits − MaxFlow
-
-Important: If several chosen projects need the same tool, that tool is selected once, so its cost is paid once.
+        Important: If several chosen projects need the same tool, that tool is selected once, so its cost is paid once.
 ==============================================================================
+*/
+
 
 // slow max flow
 // O(V * E^2)
