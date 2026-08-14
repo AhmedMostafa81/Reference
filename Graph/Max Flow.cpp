@@ -275,7 +275,10 @@ struct Dinic {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //    minimum cost max flow
-
+/*
+Max Flow : Runs in O(V^2 E) for general networks using Dinic's algorithm.
+Min Cost Flow: Runs in O(F * V * E) in the worst case using SPFA, where F is the total flow requested.
+*/
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -288,13 +291,12 @@ struct FlowEdge {
 };
 
 struct FlowNetwork {
-    const long long INF = 1e18;
+    static constexpr long long INF = 1e18;
 
     int n, m = 0, s, t;
     vector<FlowEdge> edges;
     vector<vector<int>> adj;
     vector<int> level, ptr;
-    queue<int> q;
 
     FlowNetwork(int n, int s, int t) : n(n), s(s), t(t) {
         adj.resize(n);
@@ -310,18 +312,24 @@ struct FlowNetwork {
         m += 2;
     }
 
-    // Dinic BFS
+    void reset_flow() {
+        for (auto &e : edges) {
+            e.flow = 0;
+        }
+    }
+
+    // --- Dinic's Max Flow ---
     bool bfs() {
         fill(level.begin(), level.end(), -1);
         level[s] = 0;
-        q = queue<int>();
+        queue<int> q;
         q.push(s);
 
         while (!q.empty()) {
             int v = q.front();
             q.pop();
             for (int id : adj[v]) {
-                if (edges[id].cap - edges[id].flow < 1) continue;
+                if (edges[id].cap - edges[id].flow <= 0) continue;
                 if (level[edges[id].u] != -1) continue;
                 level[edges[id].u] = level[v] + 1;
                 q.push(edges[id].u);
@@ -330,32 +338,37 @@ struct FlowNetwork {
         return level[t] != -1;
     }
 
-    // Dinic DFS
     long long dfs(int v, long long pushed) {
         if (pushed == 0) return 0;
         if (v == t) return pushed;
 
+        long long total_pushed = 0;
         for (int &cid = ptr[v]; cid < (int)adj[v].size(); cid++) {
             int id = adj[v][cid];
             int u = edges[id].u;
 
-            if (level[v] + 1 != level[u] || edges[id].cap - edges[id].flow < 1)
+            if (level[v] + 1 != level[u] || edges[id].cap - edges[id].flow <= 0)
                 continue;
 
-            long long tr = dfs(u, min(pushed, edges[id].cap - edges[id].flow));
+            long long tr = dfs(u, min(pushed - total_pushed, edges[id].cap - edges[id].flow));
             if (tr == 0) continue;
 
             edges[id].flow += tr;
             edges[id ^ 1].flow -= tr;
-            return tr;
+            total_pushed += tr;
+
+            if (total_pushed == pushed) break;
         }
-        return 0;
+
+        // Dead-end pruning
+        if (total_pushed == 0) level[v] = -1;
+        return total_pushed;
     }
 
     long long max_flow() {
+        if (s == t) return 0;
         long long f = 0;
-        while (true) {
-            if (!bfs()) break;
+        while (bfs()) {
             fill(ptr.begin(), ptr.end(), 0);
             while (long long pushed = dfs(s, INF)) {
                 f += pushed;
@@ -364,8 +377,9 @@ struct FlowNetwork {
         return f;
     }
 
-    // Min Cost Flow of K units using SPFA
+    // --- Min Cost Flow (SPFA) ---
     long long min_cost_flow(long long K) {
+        if (s == t) return 0;
         long long flow = 0, cost = 0;
         vector<long long> dist(n);
         vector<int> in_queue(n), parent(n), parent_edge(n);
@@ -373,8 +387,6 @@ struct FlowNetwork {
         while (flow < K) {
             fill(dist.begin(), dist.end(), INF);
             fill(in_queue.begin(), in_queue.end(), 0);
-            fill(parent.begin(), parent.end(), -1);
-            fill(parent_edge.begin(), parent_edge.end(), -1);
 
             dist[s] = 0;
             queue<int> q;
@@ -388,7 +400,7 @@ struct FlowNetwork {
 
                 for (int id : adj[v]) {
                     int u = edges[id].u;
-                    if (edges[id].cap - edges[id].flow < 1) continue;
+                    if (edges[id].cap - edges[id].flow <= 0) continue;
 
                     if (dist[u] > dist[v] + edges[id].cost) {
                         dist[u] = dist[v] + edges[id].cost;
@@ -427,12 +439,10 @@ struct FlowNetwork {
         return (flow < K ? -1 : cost);
     }
 
-    // Returns all original forward edges that carry positive flow.
-    // Each tuple = {from, to, used_flow, cost}
     vector<tuple<int, int, long long, long long>> get_used_edges() const {
         vector<tuple<int, int, long long, long long>> res;
         for (int i = 0; i < m; i += 2) {
-            const FlowEdge &e = edges[i];   // only forward/original edges
+            const FlowEdge &e = edges[i];
             if (e.cap > 0 && e.flow > 0) {
                 res.emplace_back(e.v, e.u, e.flow, e.cost);
             }
