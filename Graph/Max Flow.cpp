@@ -52,27 +52,29 @@
 */
 
 
-// slow max flow
-// O(V * E^2)
-
+// ==============================================================================
+// 1. EDMONDS-KARP ALGORITHM - O(V * E^2)
+// Memory: O(V^2) - Ideal for small graphs (V <= 2000)
+// ==============================================================================
 struct EdmondsKarp {
     int n;
-    vector<vector<long long>> capacity;
-    vector<vector<int>> adj;
+    vector<vector<long long>> cap;
+    vector<vector<int>> gr;
 
-    EdmondsKarp(int n) : n(n), capacity(n, vector<long long>(n, 0)), adj(n) {}
+    EdmondsKarp(int n) : n(n), cap(n, vector<long long>(n, 0)), gr(n) {}
 
-    void add_edge(int u, int v, long long cap) {
-        if (capacity[u][v] == 0 && capacity[v][u] == 0) {
-            adj[u].push_back(v);
-            adj[v].push_back(u);
+    void add_edge(int u, int v, long long c) {
+        if (c <= 0) return;
+        if (cap[u][v] == 0 && cap[v][u] == 0) {
+            gr[u].push_back(v);
+            gr[v].push_back(u);
         }
-        capacity[u][v] += cap;
+        cap[u][v] += c;
     }
 
-    long long bfs(int s, int t, vector<int>& parent) {
-        fill(parent.begin(), parent.end(), -1);
-        parent[s] = -2;
+    long long bfs(int s, int t, vector<int>& par) {
+        fill(par.begin(), par.end(), -1);
+        par[s] = -2;
         queue<pair<int, long long>> q;
         q.push({s, 1e18});
 
@@ -81,10 +83,10 @@ struct EdmondsKarp {
             long long flow = q.front().second;
             q.pop();
 
-            for (int next : adj[cur]) {
-                if (parent[next] == -1 && capacity[cur][next] > 0) {
-                    parent[next] = cur;
-                    long long new_flow = min(flow, capacity[cur][next]);
+            for (int next : gr[cur]) {
+                if (par[next] == -1 && cap[cur][next] > 0) {
+                    par[next] = cur;
+                    long long new_flow = min(flow, cap[cur][next]);
                     if (next == t) return new_flow;
                     q.push({next, new_flow});
                 }
@@ -102,19 +104,19 @@ struct EdmondsKarp {
             int cur = t;
             while (cur != s) {
                 int prev = parent[cur];
-                capacity[prev][cur] -= new_flow;
-                capacity[cur][prev] += new_flow;
+                cap[prev][cur] -= new_flow;
+                cap[cur][prev] += new_flow;
                 cur = prev;
             }
         }
         return flow;
     }
 };
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// ==============================================================================
-// 1. FAST MAX FLOW (DINIC'S ALGORITHM) - O(V^2 * E)
-// ==============================================================================
 
+// ==============================================================================
+// 2. DINIC'S ALGORITHM - O(V^2 * E)
+// Memory: O(V + E) - Fast & scalable for large graphs
+// ==============================================================================
 struct FlowEdge {
     int v, u;
     long long cap, flow = 0;
@@ -144,10 +146,12 @@ struct Dinic {
         m += 2;
     }
 
-    // Helper: Undirected edge (Theory 3)
     void add_undirected_edge(int v, int u, long long cap) {
-        add_edge(v, u, cap);
-        add_edge(u, v, cap);
+        edges.emplace_back(v, u, cap);
+        edges.emplace_back(u, v, cap);
+        gr[v].push_back(m);
+        gr[u].push_back(m + 1);
+        m += 2;
     }
 
     bool bfs() {
@@ -195,52 +199,46 @@ struct Dinic {
         return f;
     }
 
-    // --- TRACING FUNCTIONS ---
+    // --- TRACING & UTILITIES ---
 
-    vector<vector<int>> extract_flow_paths(long long flow_limit = -1) {
+    vector<vector<int>> extract_flow_paths() {
         vector<vector<int>> paths;
         while (true) {
             vector<int> path = {s};
             vector<bool> visited(n, false);
-            long long pushed = inf;
             
-            function<bool(int)> dfs_path = [&](int v) -> bool {
-                if (v == t) return true;
+            function<long long(int, long long)> dfs_path = [&](int v, long long current_push) -> long long {
+                if (v == t) return current_push;
                 visited[v] = true;
                 for (int& i = ptr[v]; i < (int)gr[v].size(); ++i) {
                     int id = gr[v][i];
                     FlowEdge& e = edges[id];
                     if (e.flow > 0 && !visited[e.u]) {
                         path.push_back(e.u);
-                        long long minflow = min(pushed, e.flow);
-                        pushed = minflow;
-                        if (dfs_path(e.u)) {
+                        long long pushed = dfs_path(e.u, min(current_push, e.flow));
+                        if (pushed > 0) {
                             e.flow -= pushed;
                             edges[id ^ 1].flow += pushed;
-                            return true;
+                            return pushed;
                         }
                         path.pop_back();
                     }
                 }
-                return false;
+                return 0;
             };
 
             fill(ptr.begin(), ptr.end(), 0);
-            if (!dfs_path(s)) break;
+            long long pushed = dfs_path(s, inf);
+            if (pushed == 0) break;
 
-            if (flow_limit != -1 && pushed > flow_limit) pushed = flow_limit;
             paths.push_back(path);
-            if (flow_limit != -1) {
-                flow_limit -= pushed;
-                if (flow_limit <= 0) break;
-            }
         }
         return paths;
     }
 
     vector<tuple<int, int, long long>> get_used_edges() {
         vector<tuple<int, int, long long>> result;
-        for (int i = 0; i < m; i += 2) {
+        for (int i = 0; i < m; i++) { // Changed i += 2 to i++ for undirected graph support
             if (edges[i].cap > 0 && edges[i].flow > 0) {
                 result.emplace_back(edges[i].v, edges[i].u, edges[i].flow);
             }
@@ -264,7 +262,7 @@ struct Dinic {
             }
         }
         vector<pair<int, int>> cut_edges;
-        for (int i = 0; i < m; i += 2) {
+        for (int i = 0; i < m; i++) { // Changed i += 2 to i++ for undirected graph support
             const FlowEdge& e = edges[i];
             if (e.cap == e.flow && e.cap > 0 && vis[e.v] && !vis[e.u]) {
                 cut_edges.emplace_back(e.v, e.u);
@@ -272,8 +270,8 @@ struct Dinic {
         }
         return cut_edges;
     }
-};
 
+};
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //    minimum cost max flow
