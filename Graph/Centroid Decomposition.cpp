@@ -50,42 +50,149 @@ int query(int node) {
     return ;
 }
 --------------------------------------------------------------------
-// another version
 
-int MX_DEP;
+/* 
+ * Centroid Decomposition (Stronger Version)
+ * - Precomputes tree distances in O(1) using a centroid level array.
+ * - Prevents overcounting via inclusion-exclusion with two data structures (DS & DS_par).
+ * - Total Time: O(N log N) building, O(log N) per update/query.
+ * - Total Space: O(N log N) using dynamically sized Fenwick trees.
+ */
 
-void solve(int node , int p , bool Fill , int dep) {
-    MX_DEP = max(MX_DEP , dep);
-    if (Fill)
-        fr[dep]++;
-    else if (k >= dep)
-        ans += fr[k - dep];
-    for (auto ch:gr[node])
-        if (!del[ch] && ch != p)
-            solve(ch , node , Fill , dep + 1);
+#include <bits/stdc++.h>
+using namespace std;
+
+const int N = 100005;
+const int LOG = 20; // Max depth of centroid tree for N = 10^5 is ~17
+
+vector<int> gr[N];
+int par[N], sz[N], level[N];
+bool del[N];
+int cd_dist[LOG][N]; // cd_dist[lvl][u] = distance from centroid at 'lvl' to node 'u'
+
+// Dynamically sized Fenwick tree to save memory O(N log N) total
+struct BIT {
+    vector<int> tree;
+    void init(int n) { tree.assign(n + 2, 0); }
+    void add(int i, int val) {
+        for (i++; i < tree.size(); i += i & -i) tree[i] += val;
+    }
+    int query(int i) {
+        int sum = 0;
+        for (i = min((int)tree.size() - 1, i + 1); i > 0; i -= i & -i) sum += tree[i];
+        return sum;
+    }
+};
+
+BIT DS[N], DS_par[N];
+
+// O(1) distance query using precomputed level distances
+int get_dist(int node, int ancestor) {
+    return cd_dist[level[ancestor]][node];
 }
 
-void decomposition(int node) {
-    get_sz(node , -1);
-    int cen = centroid(node , -1 , sz[node]);
-    del[cen] = true;
-    MX_DEP = 0 ;
-    fr[0] = 1; // add this node
-    for (auto ch:gr[cen]) {
-        if (!del[ch]) {
-            solve(ch , cen , 0 , 1);
-            solve(ch , cen , 1 , 1);
+void init_size(int node, int cur_par) {
+    sz[node] = 1;
+    for (auto ch : gr[node]) {
+        if (ch != cur_par && !del[ch]) {
+            init_size(ch, node);
+            sz[node] += sz[ch];
         }
     }
-    for (int i = 0; i <= MX_DEP ; i++)
-        fr[i] = 0;
-    for (auto ch:gr[cen])
-        if (!del[ch])
-            decomposition(ch);
 }
 
+int centroid(int node, int cur_par, int tot) {
+    for (auto ch : gr[node]) {
+        if (ch != cur_par && !del[ch] && sz[ch] > tot / 2) {
+            return centroid(ch, node, tot);
+        }
+    }
+    return node;
+}
+
+// Precompute distances from the current centroid to all nodes in its component
+void get_dists(int u, int p, int d, int lvl) {
+    cd_dist[lvl][u] = d;
+    for (auto v : gr[u]) {
+        if (v != p && !del[v]) {
+            get_dists(v, u, d + 1, lvl);
+        }
+    }
+}
+
+void decomposition(int node, int cur_par, int lvl = 0) {
+    init_size(node, -1);
+    int x = centroid(node, -1, sz[node]);
     
-// ------------------------------------------------
+    par[x] = cur_par;
+    level[x] = lvl; // Store the level of this centroid
+    del[x] = true;
+    
+    // --- PRECOMPUTE DISTANCES ---
+    get_dists(x, -1, 0, lvl);
+    
+    // Initialize the data structures for this centroid based on component size.
+    // The max distance to any node in this component is bounded by sz[node].
+    DS[x].init(sz[node]);
+    if (cur_par != -1) {
+        // DS_par[x] stores distances from nodes in x's subtree to x's PARENT.
+        // Bounded by sz[node] + 1.
+        DS_par[x].init(sz[node] + 1); 
+    }
+
+    for (auto ch : gr[x]) {
+        if (!del[ch]) {
+            decomposition(ch, x, lvl + 1);
+        }
+    }
+}
+
+void update(int node, int val) {
+    int cur = node;
+    
+    // Update the centroid itself
+    DS[cur].add(0, val);
+    
+    while (par[cur] != -1) {
+        int p = par[cur];
+        int dist_to_p = get_dist(node, p);
+        
+        // 1. Add to parent's DS
+        DS[p].add(dist_to_p, val);
+        
+        // 2. Add to the exclusion DS so we can subtract it later
+        DS_par[cur].add(dist_to_p, val);
+        
+        cur = p;
+    }
+}
+
+int query(int node, int k) {
+    int cur = node;
+    
+    // Base answer is querying the node's own centroid-subtree
+    int ans = DS[cur].query(k);
+    
+    while (par[cur] != -1) {
+        int p = par[cur];
+        int dist_to_p = get_dist(node, p);
+        
+        if (dist_to_p <= k) {
+            int remaining_dist = k - dist_to_p;
+            
+            // Add everything valid from the parent's subtree
+            ans += DS[p].query(remaining_dist);
+            
+            // Subtract the overcounted branch we just came from!
+            ans -= DS_par[cur].query(remaining_dist);
+        }
+        cur = p;
+    }
+    return ans;
+}
+    
+--------------------------------------------------------------------
+// another version
 
 // to count all pahts that pass from each node
 
